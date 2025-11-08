@@ -1,0 +1,119 @@
+// Prisma schema for Flowbit Analytics
+// Generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Datasource
+ datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Document {
+  id                String   @id
+  name              String
+  filePath          String
+  fileType          String?
+  fileSize          BigInt?
+  status            String?
+  organizationId    String?
+  departmentId      String?
+  createdAt         DateTime?
+  updatedAt         DateTime?
+  isValidatedByHuman Boolean?
+  uploadedById      String?
+  processedAt       DateTime?
+  savedAt           DateTime?
+  savedBy           String?
+  lastValidatedAt   DateTime?
+  validatedBy       String?
+  analyticsId       String?
+  metadataJson      Json?
+  llmRawJson        Json?
+
+  invoice           Invoice?
+}
+
+model Vendor {
+  id       Int       @id @default(autoincrement())
+  name     String
+  taxId    String?
+  address  String?
+  invoices Invoice[]
+
+  @@unique([name, taxId])
+}
+
+model Customer {
+  id       Int       @id @default(autoincrement())
+  name     String
+  address  String?
+  invoices Invoice[]
+
+  @@unique([name])
+}
+
+model Invoice {
+  id             Int       @id @default(autoincrement())
+  documentId     String?   @unique
+  document       Document? @relation(fields: [documentId], references: [id])
+
+  invoiceNumber  String?
+  invoiceDate    DateTime?
+  deliveryDate   DateTime?
+
+  vendorId       Int?
+  vendor         Vendor?   @relation(fields: [vendorId], references: [id])
+
+  customerId     Int?
+  customer       Customer? @relation(fields: [customerId], references: [id])
+
+  currencySymbol String?
+  status         String?
+
+  subTotal       Decimal?
+  totalTax       Decimal?
+  totalAmount    Decimal?
+
+  dueDate              DateTime?
+  paymentTerms         String?
+  bankAccountNumber    String?
+  bic                  String?
+  accountName          String?
+  netDays              Int?
+  discountPercentage   Decimal?
+  discountDays         Int?
+  discountDueDate      DateTime?
+  discountedTotal      Decimal?
+
+  lineItems      LineItem[]
+  payments       Payment[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model LineItem {
+  id           Int      @id @default(autoincrement())
+  invoiceId    Int
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+  srNo         Int?
+  description  String?
+  quantity     Decimal?
+  unitPrice    Decimal?
+  totalPrice   Decimal?
+  sachkonto    String?
+  buSchluessel String?
+  category     String?
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+  amount    Decimal?
+  paidAt    DateTime?
+  method    String?
+  status    String?
+}

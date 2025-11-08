@@ -1,0 +1,31 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowbit
+      POSTGRES_PASSWORD: flowbit
+      POSTGRES_DB: flowbit
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  vanna:
+    build:
+      context: ./services/vanna
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg://flowbit:flowbit@postgres:5432/flowbit
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_API_BASE=https://api.groq.com/openai/v1
+      - PORT=8000
+      - CORS_ORIGIN=http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+volumes:
+  db-data:

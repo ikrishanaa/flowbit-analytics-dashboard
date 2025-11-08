@@ -1,0 +1,44 @@
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store
+
+# Turbo / Next.js
+.next
+out
+.vercel
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Prisma
+prisma/dev.db
+
+# Mac/Linux
+.DS_Store
+Thumbs.db
+
+# Project files to ignore
+Flowbit-FullStack-Ultimate-PRD.md
+
+# Figma exports
+figma_dashboard_img/
+figma-dashboard-img/
+figma/dashboard/img/
+figma/**/images/
+figma\ dashboard\ img/
+
+
+
