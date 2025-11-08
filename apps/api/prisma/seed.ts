@@ -100,11 +100,21 @@ async function main() {
 
     let vendorId: number | null = null;
     if (vendorName) {
-      const vendor = await prisma.vendor.upsert({
-        where: { name_taxId: { name: vendorName, taxId: vendorTaxId } },
-        update: { address: vendorAddress ?? undefined },
-        create: { name: vendorName, taxId: vendorTaxId, address: vendorAddress },
-      });
+      let vendor;
+      if (vendorTaxId) {
+        vendor = await prisma.vendor.upsert({
+          where: { name_taxId: { name: vendorName, taxId: vendorTaxId } },
+          update: { address: vendorAddress ?? undefined },
+          create: { name: vendorName, taxId: vendorTaxId, address: vendorAddress },
+        });
+      } else {
+        const found = await prisma.vendor.findFirst({ where: { name: vendorName } });
+        if (found) {
+          vendor = await prisma.vendor.update({ where: { id: found.id }, data: { address: vendorAddress ?? undefined } });
+        } else {
+          vendor = await prisma.vendor.create({ data: { name: vendorName, address: vendorAddress } });
+        }
+      }
       vendorId = vendor.id;
     }
 
