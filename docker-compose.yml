@@ -35,6 +35,7 @@ services:
       - PORT=4000
       - VANNA_API_BASE_URL=http://vanna:8000
       - CORS_ORIGIN=http://localhost:3000
+      - DEFAULT_ROLE=admin
     ports:
       - "4000:4000"
     depends_on:

@@ -40,7 +40,13 @@ export function getAuth(req: Request): { userId?: number; name?: string; role: A
     const parsed = verifyToken(m[1]);
     if (parsed) return parsed;
   }
-  const fallbackRole = String(req.header('x-role') || '').toLowerCase();
-  const role: AppRole = (fallbackRole === 'admin' ? 'admin' : 'analyst');
+  // Fallback role resolution (no token):
+  // 1) x-role header (admin/analyst)
+  // 2) DEFAULT_ROLE env (admin/analyst)
+  // 3) default to analyst
+  const fallbackRoleHeader = String(req.header('x-role') || '').toLowerCase();
+  const envDefaultRole = String(process.env.DEFAULT_ROLE || '').toLowerCase();
+  const roleStr = (fallbackRoleHeader || envDefaultRole || 'analyst');
+  const role: AppRole = roleStr === 'admin' ? 'admin' : 'analyst';
   return { role };
 }
