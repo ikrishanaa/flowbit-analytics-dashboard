@@ -2,10 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const prisma_1 = require("../lib/prisma");
+const auth_1 = require("../lib/auth");
 const router = (0, express_1.Router)();
 router.get('/', async (req, res) => {
     try {
-        const role = String(req.header('x-role') || '').toLowerCase();
+        const { role } = (0, auth_1.getAuth)(req);
         if (role !== 'admin') {
             return res.status(403).json({ error: 'forbidden' });
         }

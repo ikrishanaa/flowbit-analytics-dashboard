@@ -18,6 +18,7 @@ const chat_1 = __importDefault(require("./routes/chat"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const openapi_1 = __importDefault(require("./openapi"));
 const history_1 = __importDefault(require("./routes/history"));
+const auth_1 = __importDefault(require("./routes/auth"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json({ limit: '2mb' }));
 app.use((0, morgan_1.default)('dev'));
@@ -44,6 +45,7 @@ app.use('/category-spend', categories_1.default);
 app.use('/cash-outflow', cashflow_1.default);
 app.use('/chat-with-data', chat_1.default);
 app.use('/chat-history', history_1.default);
+app.use('/auth', auth_1.default);
 // OpenAPI docs
 app.get('/openapi.json', (_req, res) => res.json(openapi_1.default));
 app.use('/docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(openapi_1.default));
