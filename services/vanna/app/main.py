@@ -26,6 +26,7 @@ except Exception:
 
 DATABASE_URL = os.getenv("VANNA__DATABASE_URL") or os.getenv("DATABASE_URL")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 PORT = int(os.getenv("PORT", "8000"))
 CORS_ORIGIN = os.getenv("CORS_ORIGIN", "*")
 
@@ -103,7 +104,7 @@ Database Schema:\n{schema}\n\nQuestion: {req.question}\n\nReturn only SQL in a s
 
     client = Groq(api_key=GROQ_API_KEY)
     completion = client.chat.completions.create(
-        model="llama-3.1-70b-versatile",
+        model=GROQ_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -149,7 +150,7 @@ Database Schema:\n{schema}\n\nQuestion: {question}\n\nReturn only SQL in a singl
         try:
             client = Groq(api_key=GROQ_API_KEY)
             stream = client.chat.completions.create(
-                model="llama-3.1-70b-versatile",
+                model=GROQ_MODEL,
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                 temperature=0.1,
                 stream=True,
