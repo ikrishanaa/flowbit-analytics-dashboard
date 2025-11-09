@@ -117,3 +117,24 @@ model Payment {
   method    String?
   status    String?
 }
+
+model QueryLog {
+  id        Int      @id @default(autoincrement())
+  prompt    String
+  sql       String?
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  passwordHash String
+  role         Role     @default(ANALYST)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

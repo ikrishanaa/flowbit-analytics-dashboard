@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { getAuth } from '../lib/auth';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
   try {
+const { role } = getAuth(req);
     const q = (req.query.q as string) || '';
     const page = Math.max(parseInt((req.query.page as string) || '1', 10), 1);
     const pageSize = Math.min(Math.max(parseInt((req.query.pageSize as string) || '20', 10), 1), 100);
@@ -37,8 +39,8 @@ router.get('/', async (req, res) => {
       vendor: i.vendor?.name || null,
       invoiceDate: i.invoiceDate,
       invoiceNumber: i.invoiceNumber,
-      amount: i.totalAmount,
-      status: i.status,
+      amount: role === 'admin' ? (i.totalAmount as any) : null,
+      status: role === 'admin' ? i.status : null,
     }));
 
     res.json({ page, pageSize, total, items: mapped });

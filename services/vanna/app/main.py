@@ -1,9 +1,11 @@
 import os
 import re
 from typing import Any, Dict, List
+import json
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -122,6 +124,66 @@ Database Schema:\n{schema}\n\nQuestion: {req.question}\n\nReturn only SQL in a s
         raise HTTPException(status_code=400, detail={"sql": sql, "error": str(e)})
 
     return {"sql": sql, "columns": cols, "rows": rows}
+
+
+@app.get("/chat-stream")
+async def chat_stream(question: str):
+    """Server-Sent Events stream for incremental SQL + results."""
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+    if Groq is None:
+        raise HTTPException(status_code=500, detail="groq python package not installed")
+
+    schema = get_schema_snapshot()
+
+    system_prompt = (
+        "You are a SQL expert for a PostgreSQL database. "
+        "Given a natural-language question and the database schema, generate a single optimized SQL query that answers the question. "
+        "Only output the SQL inside a code block. Avoid DDL or writes. Use column names exactly as in the schema."
+    )
+    user_prompt = f"""
+Database Schema:\n{schema}\n\nQuestion: {question}\n\nReturn only SQL in a single code block.
+"""
+
+    def gen():
+        try:
+            client = Groq(api_key=GROQ_API_KEY)
+            stream = client.chat.completions.create(
+                model="llama-3.1-70b-versatile",
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+                temperature=0.1,
+                stream=True,
+            )
+            parts: List[str] = []
+            for chunk in stream:
+                try:
+                    choice = chunk.choices[0]
+                    content = getattr(getattr(choice, "delta", None), "content", None) or getattr(getattr(choice, "message", None), "content", None)
+                    if content:
+                        parts.append(content)
+                        yield f"event: delta\ndata: {json.dumps(content)}\n\n"
+                except Exception:
+                    continue
+
+            content = "".join(parts)
+            sql = limit_sql(extract_sql(content))
+            yield f"event: sql\ndata: {json.dumps(sql)}\n\n"
+
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(text(sql))
+                    cols = list(result.keys())
+                    rows = [list(r) for r in result.fetchall()]
+                payload = json.dumps({"columns": cols, "rows": rows})
+                yield f"event: result\ndata: {payload}\n\n"
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps(str(e))}\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps(str(e))}\n\n"
+        finally:
+            yield "event: done\ndata: {}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 if __name__ == "__main__":

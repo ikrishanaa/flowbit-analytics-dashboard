@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { getAuth } from '../lib/auth';
 
 const router = Router();
 
-router.get('/top10', async (_req, res) => {
+router.get('/top10', async (req, res) => {
   try {
+const { role } = getAuth(req);
     const rows: Array<{ vendor: string; spend: number }> = await prisma.$queryRaw`
       SELECT v.name AS vendor,
              COALESCE(SUM(CASE WHEN i."totalAmount" > 0 THEN i."totalAmount" ELSE 0 END), 0)::float AS spend
@@ -15,7 +17,7 @@ router.get('/top10', async (_req, res) => {
       LIMIT 10;
     `;
 
-    res.json(rows);
+    res.json(role === 'admin' ? rows : rows.map(r => ({ ...r, spend: 0 })));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Failed to load top vendors' });

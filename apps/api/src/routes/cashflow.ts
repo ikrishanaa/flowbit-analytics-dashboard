@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import dayjs from 'dayjs';
 import { prisma } from '../lib/prisma';
+import { getAuth } from '../lib/auth';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
   try {
+const { role } = getAuth(req);
     const startParam = req.query.start as string | undefined;
     const endParam = req.query.end as string | undefined;
 
@@ -21,7 +23,7 @@ router.get('/', async (req, res) => {
       ORDER BY 1 ASC;
     `;
 
-    res.json(rows);
+    res.json(role === 'admin' ? rows : rows.map(r => ({ ...r, outflow: 0 })));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Failed to load cash outflow forecast' });
