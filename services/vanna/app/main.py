@@ -54,8 +54,9 @@ def get_schema_snapshot() -> str:
     lines: List[str] = []
     for table_name in inspector.get_table_names():
         cols = inspector.get_columns(table_name)
-        col_str = ", ".join([f"{c['name']} {str(c.get('type'))}" for c in cols])
-        lines.append(f"TABLE {table_name}: {col_str}")
+        # Quote identifiers to reflect actual case-sensitive names used by Prisma
+        col_str = ", ".join([f'"{c["name"]}" {str(c.get("type"))}' for c in cols])
+        lines.append(f'TABLE "{table_name}": {col_str}')
     return "\n".join(lines)
 
 
@@ -75,6 +76,34 @@ def limit_sql(sql: str) -> str:
     return sql.rstrip("; ") + " LIMIT 200;"
 
 
+def quote_identifiers(sql: str) -> str:
+    """Best-effort quoting of identifiers to match Prisma's case-sensitive names.
+    - Quotes table names that appear after FROM/JOIN
+    - Quotes column names appearing as alias.column
+    This is heuristic but robust for our generated patterns.
+    """
+    try:
+        insp = inspect(engine)
+        table_names = insp.get_table_names()
+    except Exception:
+        table_names = []
+
+    # Quote table names after FROM/JOIN
+    table_cands = set()
+    for tn in table_names:
+        t = tn.strip('"')
+        table_cands.add(t)
+        table_cands.add(tn)
+    for t in sorted(table_cands, key=len, reverse=True):
+        pattern = re.compile(rf"(?i)(\bFROM\s+|\bJOIN\s+){re.escape(t)}(\b)")
+        t_clean = t.strip('"')
+        sql = pattern.sub(lambda m, s=t_clean: m.group(1) + '"' + s + '"' + m.group(2), sql)
+
+    # Quote alias.column -> alias."column"
+    sql = re.sub(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b", r"\1.\"\2\"", sql)
+    return sql
+
+
 @app.get("/health")
 async def health():
     with engine.connect() as conn:
@@ -92,7 +121,7 @@ async def chat(req: ChatRequest):
     system_prompt = (
         "You are a SQL expert for a PostgreSQL database. "
         "Given a natural-language question and the database schema, generate a single optimized SQL query that answers the question. "
-        "Only output the SQL inside a code block. Avoid DDL or writes. Use column names exactly as in the schema."
+        "Only output the SQL inside a code block. Avoid DDL or writes. Use identifiers exactly as in the schema and ALWAYS wrap table and column names in double quotes (e.g., \"Invoice\".\"invoiceDate\")."
     )
 
     user_prompt = f"""
@@ -113,7 +142,7 @@ Database Schema:\n{schema}\n\nQuestion: {req.question}\n\nReturn only SQL in a s
     )
 
     content = completion.choices[0].message.content or ""
-    sql = limit_sql(extract_sql(content))
+    sql = quote_identifiers(limit_sql(extract_sql(content)))
 
     # Execute SQL
     try:
@@ -140,7 +169,7 @@ async def chat_stream(question: str):
     system_prompt = (
         "You are a SQL expert for a PostgreSQL database. "
         "Given a natural-language question and the database schema, generate a single optimized SQL query that answers the question. "
-        "Only output the SQL inside a code block. Avoid DDL or writes. Use column names exactly as in the schema."
+        "Only output the SQL inside a code block. Avoid DDL or writes. Use identifiers exactly as in the schema and ALWAYS wrap table and column names in double quotes (e.g., \"Invoice\".\"invoiceDate\")."
     )
     user_prompt = f"""
 Database Schema:\n{schema}\n\nQuestion: {question}\n\nReturn only SQL in a single code block.
@@ -167,7 +196,7 @@ Database Schema:\n{schema}\n\nQuestion: {question}\n\nReturn only SQL in a singl
                     continue
 
             content = "".join(parts)
-            sql = limit_sql(extract_sql(content))
+            sql = quote_identifiers(limit_sql(extract_sql(content)))
             yield f"event: sql\ndata: {json.dumps(sql)}\n\n"
 
             try:
