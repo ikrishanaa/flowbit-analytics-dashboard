@@ -34,7 +34,7 @@ const { role } = getAuth(req);
       take: pageSize,
     });
 
-    const mapped = items.map((i) => ({
+const mapped = items.map((i: any) => ({
       id: i.id,
       vendor: i.vendor?.name || null,
       invoiceDate: i.invoiceDate,
