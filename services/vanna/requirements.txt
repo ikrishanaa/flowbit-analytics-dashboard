@@ -7,3 +7,4 @@ vanna==0.7.7
 groq==0.11.0
 # Pin httpx below 0.28 due to breaking change removing 'proxies' arg in Client.__init__
 httpx<0.28
+pytest>=7.0.0
